@@ -37,12 +37,11 @@ def get_phone_page(url) -> BeautifulSoup:
     try:
         options = webdriver.ChromeOptions()
         options.add_argument("--headless=new")
-        options.add_argument("--log-level=3")
         options.add_argument(
             "user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 YaBrowser/23.11.0.0 Safari/537.36")
         options.add_argument("--disable-blink-features=AutomationControlled")
-
-        browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        #service = Service(ChromeDriverManager().install()),
+        browser = webdriver.Chrome(options=options)
         browser.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
             "source": """
                   const newProto = navigator.__proto__
