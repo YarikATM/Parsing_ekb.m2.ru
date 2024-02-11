@@ -41,7 +41,7 @@ def get_phone_page(url) -> BeautifulSoup:
             "user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 YaBrowser/23.11.0.0 Safari/537.36")
         options.add_argument("--disable-blink-features=AutomationControlled")
 
-        browser = webdriver.Chrome(service=Service(ChromeDriverManager(log_level=40).install()), options=options)
+        browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         browser.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
             "source": """
                   const newProto = navigator.__proto__
@@ -421,4 +421,9 @@ def main():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, filemode="a",
                         format="%(asctime)s %(levelname)s %(message)s")
+    logger = logging.getLogger('urllib3.connectionpool')
+    logger.setLevel(logging.INFO)
+
+    logger = logging.getLogger('selenium.webdriver.remote.remote_connection')
+    logger.setLevel(logging.WARNING)
     main()
