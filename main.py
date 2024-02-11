@@ -18,7 +18,7 @@ from threading import Thread
 from queue import Queue
 
 tasks_queue = Queue()
-num_workers = 5
+num_workers = 10
 
 RESULT = [[] for i in range(num_workers)]
 
