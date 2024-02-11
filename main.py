@@ -299,7 +299,7 @@ def get_apartment_data(soup: BeautifulSoup):
     obj["location"] = location
     obj["apartment_params"] = apartment_params
 
-    logging.debug(f"Получены данные квартиры: {ID}")
+    logging.info(f"Получены данные квартиры: {ID}")
     return obj
 
 
@@ -310,7 +310,7 @@ def get_pagination():
     soup = BeautifulSoup(res_get.text, 'lxml')
     pagination = int(soup.find(class_="paginator-module__pages___1azUM").findAll("li")[-2].text)
 
-    logging.debug(f"pagination: {pagination}")
+    logging.info(f"pagination: {pagination}")
     return pagination
 
 
