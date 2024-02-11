@@ -1,4 +1,5 @@
 import os.path
+import re
 
 import selenium.common.exceptions
 from selenium import webdriver
@@ -15,7 +16,7 @@ from threading import Thread
 from queue import Queue
 
 tasks_queue = Queue()
-num_workers = 10
+num_workers = 5
 
 RESULT = [[] for i in range(num_workers)]
 
@@ -77,6 +78,14 @@ def normalize_time_publication(time_str: str):
         res = int(res.split("Добавлено ")[1].split(" ")[0])
         res = datetime.datetime.utcnow() + datetime.timedelta(hours=5) - datetime.timedelta(hours=res)
         res = f"{res:%Y-%m-%dT%H:%M:%S%ZZ}"
+    elif "202" in res:
+        res = res.replace(" г.", '').replace("декабря", "12").replace("октября", "10").replace("февраля", "2")\
+        .replace("января", "1").replace("марта", "3").replace("апреля", "4").replace("мая", "5")\
+        .replace("июня", "6").replace("июля", "7").replace("августа", "8").replace("сентября", "9")\
+        .replace("ноября", "11")
+
+        res = datetime.datetime.strptime(res, "%d %m %Y")
+        res = str(res).replace(" ", "T") + "Z"
 
 
     return res
@@ -85,11 +94,14 @@ def normalize_time_publication(time_str: str):
 def normalize_time_update(time_str: str):
     res = time_str.replace("\xa0", ' ')
     if "обновлено менее" in res:
-        res = datetime.datetime.utcnow() + datetime.timedelta(hours=5) - datetime.timedelta(minutes=30)
+        res = datetime.datetime.utcnow() + datetime.timedelta(hours=5)
         res = f"{res:%Y-%m-%dT%H:%M:%S%ZZ}"
     elif "назад" in res:
         res = int(res.split("обновлено ")[1].split(" ")[0])
         res = datetime.datetime.utcnow() + datetime.timedelta(hours=5) - datetime.timedelta(hours=res)
+        res = f"{res:%Y-%m-%dT%H:%M:%S%ZZ}"
+    elif "вчера" in res:
+        res = datetime.datetime.utcnow() + datetime.timedelta(hours=5) - datetime.timedelta(days=1)
         res = f"{res:%Y-%m-%dT%H:%M:%S%ZZ}"
     return res
 
@@ -160,9 +172,14 @@ def get_apartment_data(soup: BeautifulSoup):
     try:
         publication_date = data_block[0]
         publication_date = normalize_time_publication(publication_date)
+        if not re.match(r"([0-9]){4}(-)([0-9]){2}(-)([0-9]){2}(T)([0-9]){2}(:)([0-9]){2}(:)([0-9]){2}(Z)", publication_date):
+            logging.error(f"Ошибка в получении даты: {publication_date}, url={url}")
 
         update_date = data_block[1]
         update_date = normalize_time_update(update_date)
+
+        if not re.match(r"([0-9]){4}(-)([0-9]){2}(-)([0-9]){2}(T)([0-9]){2}(:)([0-9]){2}(:)([0-9]){2}(Z)", update_date):
+            logging.error(f"Ошибка в получении даты: {update_date}, url={url}")
 
         available = not data["status"]["isDeleted"]
     except Exception as e:
@@ -280,7 +297,7 @@ def get_apartment_data(soup: BeautifulSoup):
     obj["location"] = location
     obj["apartment_params"] = apartment_params
 
-    logging.info(f"Получены данные квартиры: {ID}")
+    logging.debug(f"Получены данные квартиры: {ID}")
     return obj
 
 
@@ -291,7 +308,7 @@ def get_pagination():
     soup = BeautifulSoup(res_get.text, 'lxml')
     pagination = int(soup.find(class_="paginator-module__pages___1azUM").findAll("li")[-2].text)
 
-    logging.info(f"Найдено {pagination} страниц")
+    logging.debug(f"pagination: {pagination}")
     return pagination
 
 
@@ -380,8 +397,8 @@ def main():
     register_workers()
 
     pagination = get_pagination()
-    pagination = 5
-    pagination = 1
+    # pagination = 5
+    # pagination = 1
     for page in range(1, pagination + 1):
         if os.path.isfile(f"raw_json/{page}_page.json"):
             data = json_read(f"raw_json/{page}_page.json")
