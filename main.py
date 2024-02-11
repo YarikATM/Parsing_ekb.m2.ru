@@ -94,6 +94,7 @@ def normalize_time_publication(time_str: str):
             .replace("июня", "6").replace("июля", "7").replace("августа", "8").replace("сентября", "9") \
             .replace("ноября", "11").strip()
         res = datetime.datetime.strptime(res, "%d %m")
+        res = res.replace(year=2024)
         res = str(res).replace(" ", "T") + "Z"
 
     return res
@@ -117,6 +118,7 @@ def normalize_time_update(time_str: str):
             .replace("июня", "6").replace("июля", "7").replace("августа", "8").replace("сентября", "9") \
             .replace("ноября", "11").strip()
         res = datetime.datetime.strptime(res, "%d %m")
+        res = res.replace(year=2024)
         res = str(res).replace(" ", "T") + "Z"
 
     return res
