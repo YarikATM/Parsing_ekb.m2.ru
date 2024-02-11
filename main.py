@@ -110,198 +110,201 @@ def normalize_time_update(time_str: str):
 
 
 def get_apartment_data(soup: BeautifulSoup):
-    obj = {}
-    contact_information = {}
-    date = {}
-    location = {}
-    apartment_params = {}
-
-    raw_script_data = soup.find("script", id="vtbeco-search-initial-state").text
-    script_data: dict = json.loads(raw_script_data)
-
-    # ID and data
-    ID = None
-    data = None
-    for key in script_data.keys():
-        if 'Offer{"offerId":' in key:
-            data = script_data[key]["data"]["offer"]
-            ID = data["id"]
-
-    obj["ID"] = ID
-
-    json_save(data, "script.json")
-
-    # Цена
-    price = None
     try:
-        price = int(data["dealType"]["price"]["value"] / 100)
+        obj = {}
+        contact_information = {}
+        date = {}
+        location = {}
+        apartment_params = {}
+
+        raw_script_data = soup.find("script", id="vtbeco-search-initial-state").text
+        script_data: dict = json.loads(raw_script_data)
+
+        # ID and data
+        ID = None
+        data = None
+        for key in script_data.keys():
+            if 'Offer{"offerId":' in key:
+                data = script_data[key]["data"]["offer"]
+                ID = data["id"]
+
+        obj["ID"] = ID
+
+        json_save(data, "script.json")
+
+        # Цена
+        price = None
+        try:
+            price = int(data["dealType"]["price"]["value"] / 100)
+        except Exception as e:
+            logging.error(str(e))
+        obj["price"] = price
+
+        # Контактная информация
+        company = None
+        name = None
+        try:
+            company = data["seller"]["organizationName"]
+            name = data["seller"]["name"]
+        except Exception as e:
+            logging.error(f"Ошибка в получении контактной информации: {str(e)}")
+        contact_information["company"] = company
+        contact_information["name"] = name
+
+        # Телефон
+        phone = None
+        try:
+            phone = soup.find(class_="OfferPhoneModalDesktop__phone").get("href").split("+")[-1]
+        except Exception as e:
+            logging.error(f"Ошибка в получении телефона: {str(e)}")
+
+        contact_information["phone"] = phone
+
+        # url
+        url = None
+        try:
+            url = soup.find("link", rel="canonical")["href"]
+        except Exception as e:
+            logging.error(f"Ошибка в получении ссылки: {str(e)}")
+        obj["url"] = url
+
+        # Дата добавления
+        available = True
+        update_date = None
+        publication_date = None
+        data_block = data["status"]["createdActualizeFormatted"].split(", ")
+        try:
+            publication_date = data_block[0]
+            publication_date = normalize_time_publication(publication_date)
+            if not re.match(r"([0-9]){4}(-)([0-9]){2}(-)([0-9]){2}(T)([0-9]){2}(:)([0-9]){2}(:)([0-9]){2}(Z)", publication_date):
+                logging.error(f"Ошибка в получении даты: {publication_date}, url={url}")
+
+            update_date = data_block[1]
+            update_date = normalize_time_update(update_date)
+
+            if not re.match(r"([0-9]){4}(-)([0-9]){2}(-)([0-9]){2}(T)([0-9]){2}(:)([0-9]){2}(:)([0-9]){2}(Z)", update_date):
+                logging.error(f"Ошибка в получении даты: {update_date}, url={url}")
+
+            available = not data["status"]["isDeleted"]
+        except Exception as e:
+            logging.error(f"Ошибка в получении даты: {str(e)}")
+
+        date["publication_date"] = publication_date
+        date["update_date"] = update_date
+        date["available"] = available
+
+        # Условие продажи
+        sell_type = None
+        try:
+            sell_type = data["dealType"]["sellTypeFormatted"]
+        except Exception as e:
+            logging.error(f"Ошибка в получении условия продажи: {str(e)}")
+
+        obj["sell_type"] = sell_type
+
+        # Адрес
+        loc = data.get("location", None)
+        region = loc.get("narrowRegion", None)
+        locality = loc.get("locality", None)
+        district = loc.get("narrowDistrict", None)
+        street = loc.get("street", None)
+        building_number = loc.get("house", None)
+        coordinates = loc.get("coordinates", None)
+        try:
+
+            if region is not None:
+                region = region.get("name")
+            if locality is not None:
+                locality = locality.get("name")
+            if district is not None:
+                district = district.get("name")
+            if street is not None:
+                street = street.get("name")
+            if building_number is not None:
+                building_number = building_number.get("name")
+            if coordinates is not None:
+                coordinates = [coordinates.get("longitude"), coordinates.get("latitude")]
+        except Exception as e:
+            logging.error(f"Ошибка в получении адреса: {str(e)}")
+
+        location["region"] = region
+        location["locality"] = locality
+        location["district"] = district
+        location["street"] = street
+        location["building_number"] = building_number
+        location["coordinates"] = coordinates
+
+        # Параметры квартиры
+        apart_type = None
+        total_area = None
+        kitchen_area = None
+        living_area = None
+        floor = None
+        floors = None
+        description = None
+        photos = None
+        try:
+            apart_data = data.get("realtyObject", None)
+
+            apart_type = apart_data.get("roomType", None)
+            if apart_type is not None:
+                if apart_type == "STUDIO":
+                    apart_type = "студия"
+                else:
+                    apart_type = apart_type.split("_")[1] + ' комнатная'
+
+            total_area = apart_data.get("totalArea", None)
+            if total_area is not None:
+                total_area = float(total_area.get("formatted").replace("\xa0м²", '').replace(",", '.'))
+
+            kitchen_area = apart_data.get("kitchenArea", None)
+            if kitchen_area is not None:
+                kitchen_area = float(kitchen_area.get("formatted").replace("\xa0м²", '').replace(",", '.'))
+
+            living_area = apart_data.get("livingArea", None)
+            if living_area is not None:
+                living_area = float(living_area.get("formatted").replace("\xa0м²", '').replace(",", '.'))
+
+            floor = apart_data.get("floor", None)
+
+            floors = apart_data.get("building", None).get("floorsTotal", None)
+
+            description = data.get("description", None)
+
+            photos = []
+
+            other_photo = data["gallery"]["images"]
+            for photo in other_photo:
+                photos.append("https://img.m2.ru" + photo["originPath"])
+
+
+
+        except Exception as e:
+            logging.error(f"Ошибка в получении параметров квартиры: {str(e)}")
+
+        apartment_params["apart_type"] = apart_type
+        apartment_params["total_area"] = total_area
+        apartment_params["kitchen_area"] = kitchen_area
+        apartment_params["living_area"] = living_area
+        apartment_params["floor"] = floor
+        apartment_params["floors"] = floors
+        apartment_params["description"] = description
+        apartment_params["photos"] = photos
+
+        # try:
+        #
+        # except Exception as e:
+        #     logging.error(str(e))
+
+        obj["contact_information"] = contact_information
+        obj["date"] = date
+        obj["location"] = location
+        obj["apartment_params"] = apartment_params
+
+        logging.info(f"Получены данные квартиры: {ID}")
+        return obj
     except Exception as e:
-        logging.error(str(e))
-    obj["price"] = price
-
-    # Контактная информация
-    company = None
-    name = None
-    try:
-        company = data["seller"]["organizationName"]
-        name = data["seller"]["name"]
-    except Exception as e:
-        logging.error(f"Ошибка в получении контактной информации: {str(e)}")
-    contact_information["company"] = company
-    contact_information["name"] = name
-
-    # Телефон
-    phone = None
-    try:
-        phone = soup.find(class_="OfferPhoneModalDesktop__phone").get("href").split("+")[-1]
-    except Exception as e:
-        logging.error(f"Ошибка в получении телефона: {str(e)}")
-
-    contact_information["phone"] = phone
-
-    # url
-    url = None
-    try:
-        url = soup.find("link", rel="canonical")["href"]
-    except Exception as e:
-        logging.error(f"Ошибка в получении ссылки: {str(e)}")
-    obj["url"] = url
-
-    # Дата добавления
-    available = True
-    update_date = None
-    publication_date = None
-    data_block = data["status"]["createdActualizeFormatted"].split(", ")
-    try:
-        publication_date = data_block[0]
-        publication_date = normalize_time_publication(publication_date)
-        if not re.match(r"([0-9]){4}(-)([0-9]){2}(-)([0-9]){2}(T)([0-9]){2}(:)([0-9]){2}(:)([0-9]){2}(Z)", publication_date):
-            logging.error(f"Ошибка в получении даты: {publication_date}, url={url}")
-
-        update_date = data_block[1]
-        update_date = normalize_time_update(update_date)
-
-        if not re.match(r"([0-9]){4}(-)([0-9]){2}(-)([0-9]){2}(T)([0-9]){2}(:)([0-9]){2}(:)([0-9]){2}(Z)", update_date):
-            logging.error(f"Ошибка в получении даты: {update_date}, url={url}")
-
-        available = not data["status"]["isDeleted"]
-    except Exception as e:
-        logging.error(f"Ошибка в получении даты: {str(e)}")
-
-    date["publication_date"] = publication_date
-    date["update_date"] = update_date
-    date["available"] = available
-
-    # Условие продажи
-    sell_type = None
-    try:
-        sell_type = data["dealType"]["sellTypeFormatted"]
-    except Exception as e:
-        logging.error(f"Ошибка в получении условия продажи: {str(e)}")
-
-    obj["sell_type"] = sell_type
-
-    # Адрес
-    loc = data.get("location", None)
-    region = loc.get("narrowRegion", None)
-    locality = loc.get("locality", None)
-    district = loc.get("narrowDistrict", None)
-    street = loc.get("street", None)
-    building_number = loc.get("house", None)
-    coordinates = loc.get("coordinates", None)
-    try:
-
-        if region is not None:
-            region = region.get("name")
-        if locality is not None:
-            locality = locality.get("name")
-        if district is not None:
-            district = district.get("name")
-        if street is not None:
-            street = street.get("name")
-        if building_number is not None:
-            building_number = building_number.get("name")
-        if coordinates is not None:
-            coordinates = [coordinates.get("longitude"), coordinates.get("latitude")]
-    except Exception as e:
-        logging.error(f"Ошибка в получении адреса: {str(e)}")
-
-    location["region"] = region
-    location["locality"] = locality
-    location["district"] = district
-    location["street"] = street
-    location["building_number"] = building_number
-    location["coordinates"] = coordinates
-
-    # Параметры квартиры
-    apart_type = None
-    total_area = None
-    kitchen_area = None
-    living_area = None
-    floor = None
-    floors = None
-    description = None
-    photos = None
-    try:
-        apart_data = data.get("realtyObject", None)
-
-        apart_type = apart_data.get("roomType", None)
-        if apart_type is not None:
-            if apart_type == "STUDIO":
-                apart_type = "студия"
-            else:
-                apart_type = apart_type.split("_")[1] + ' комнатная'
-
-        total_area = apart_data.get("totalArea", None)
-        if total_area is not None:
-            total_area = float(total_area.get("formatted").replace("\xa0м²", '').replace(",", '.'))
-
-        kitchen_area = apart_data.get("kitchenArea", None)
-        if kitchen_area is not None:
-            kitchen_area = float(kitchen_area.get("formatted").replace("\xa0м²", '').replace(",", '.'))
-
-        living_area = apart_data.get("livingArea", None)
-        if living_area is not None:
-            living_area = float(living_area.get("formatted").replace("\xa0м²", '').replace(",", '.'))
-
-        floor = apart_data.get("floor", None)
-
-        floors = apart_data.get("building", None).get("floorsTotal", None)
-
-        description = data.get("description", None)
-
-        photos = []
-
-        other_photo = data["gallery"]["images"]
-        for photo in other_photo:
-            photos.append("https://img.m2.ru" + photo["originPath"])
-
-
-
-    except Exception as e:
-        logging.error(f"Ошибка в получении параметров квартиры: {str(e)}")
-
-    apartment_params["apart_type"] = apart_type
-    apartment_params["total_area"] = total_area
-    apartment_params["kitchen_area"] = kitchen_area
-    apartment_params["living_area"] = living_area
-    apartment_params["floor"] = floor
-    apartment_params["floors"] = floors
-    apartment_params["description"] = description
-    apartment_params["photos"] = photos
-
-    # try:
-    #
-    # except Exception as e:
-    #     logging.error(str(e))
-
-    obj["contact_information"] = contact_information
-    obj["date"] = date
-    obj["location"] = location
-    obj["apartment_params"] = apartment_params
-
-    logging.info(f"Получены данные квартиры: {ID}")
-    return obj
+        logging.error(f"Произошла ошибка при получении данных: {str(e)}")
 
 
 def get_pagination():
