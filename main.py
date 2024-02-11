@@ -18,7 +18,7 @@ from threading import Thread
 from queue import Queue
 
 tasks_queue = Queue()
-num_workers = 10
+num_workers = 5
 
 RESULT = [[] for i in range(num_workers)]
 
@@ -393,7 +393,8 @@ def union_pages():
     for json_filename in directory:
         apart_data = json_read("raw_json/" + json_filename)
         for apart in apart_data:
-            result.append(apart)
+            if apart is not None:
+                result.append(apart)
         json_save(result, "result.json")
 
 
