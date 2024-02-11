@@ -421,9 +421,4 @@ def main():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, filemode="a",
                         format="%(asctime)s %(levelname)s %(message)s")
-    logger = logging.getLogger('urllib3.connectionpool')
-    logger.setLevel(logging.INFO)
-
-    logger = logging.getLogger('selenium.webdriver.remote.remote_connection')
-    logger.setLevel(logging.WARNING)
     main()
