@@ -419,6 +419,6 @@ def main():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, filemode="a",
+    logging.basicConfig(level=logging.INFO, filemode="a",
                         format="%(asctime)s %(levelname)s %(message)s")
     main()
