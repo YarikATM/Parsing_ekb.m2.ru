@@ -81,12 +81,13 @@ def normalize_time_publication(time_str: str):
         res = datetime.datetime.utcnow() + datetime.timedelta(hours=5) - datetime.timedelta(hours=res)
         res = f"{res:%Y-%m-%dT%H:%M:%S%ZZ}"
     elif "202" in res:
+        print(res)
         res = res.replace("Добавлено ", "")
         res = res.replace(" г.", '').replace("декабря", "12").replace("октября", "10").replace("февраля", "2")\
         .replace("января", "1").replace("марта", "3").replace("апреля", "4").replace("мая", "5")\
         .replace("июня", "6").replace("июля", "7").replace("августа", "8").replace("сентября", "9")\
         .replace("ноября", "11")
-
+        print(res)
         res = datetime.datetime.strptime(res, "%d %m %Y")
         res = str(res).replace(" ", "T") + "Z"
     else:
