@@ -411,7 +411,7 @@ def union_pages():
 
     directory = os.listdir('raw_json/')
     for json_filename in directory:
-        print(directory)
+        print(json_filename)
         apart_data = json_read("raw_json/" + json_filename)
         for apart in apart_data:
             if apart is not None:
