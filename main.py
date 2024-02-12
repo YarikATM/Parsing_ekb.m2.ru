@@ -411,6 +411,7 @@ def union_pages():
 
     directory = os.listdir('raw_json/')
     for json_filename in directory:
+        print(directory)
         apart_data = json_read("raw_json/" + json_filename)
         for apart in apart_data:
             if apart is not None:
@@ -443,7 +444,7 @@ def main():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, filemode="a",
+    logging.basicConfig(level=logging.DEBUG, filemode="a",
                         format="%(asctime)s %(levelname)s %(message)s")
     # main()
     union_pages()
